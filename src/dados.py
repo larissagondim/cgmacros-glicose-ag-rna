@@ -13,6 +13,7 @@ Funções:
 - resumo_dia(df): transforma os minutos de um participante em uma linha por dia,
   com a glicose (Dexcom) e o comportamento do dia.
 - maior_sequencia(bom): tamanho do maior bloco de dias bons seguidos.
+- carregar_bio(): lê o bio.csv com as colunas usadas no modelo e o grupo clínico.
 """
 
 from pathlib import Path
@@ -82,3 +83,25 @@ def maior_sequencia(bom):
     """Tamanho do maior bloco de valores True seguidos (ex.: dias bons em sequência)."""
     grupos = (bom != bom.shift()).cumsum()     # novo grupo cada vez que alterna entre bom e ruim
     return bom.groupby(grupos).sum().max()     # o bloco de True mais longo
+
+
+def carregar_bio():
+    """Lê o bio.csv com as colunas usadas no modelo e cria o grupo clínico.
+
+    Sexo vira número (1 = masculino, 0 = feminino), porque a rede só recebe números.
+    O grupo segue os cortes de HbA1c da ADA: < 5,7 saudável, 5,7 a 6,4 pré-diabetes,
+    >= 6,5 DM2. Ele serve para analisar os resultados, não como entrada da rede,
+    já que a própria HbA1c entra.
+    """
+    bio = pd.read_csv(RAW / 'bio.csv')
+    bio = bio.rename(columns={
+        'subject': 'pid',
+        'Age': 'idade',
+        'BMI': 'imc',
+        'A1c PDL (Lab)': 'hba1c',
+        'Fasting GLU - PDL (Lab)': 'glicemia_jejum',
+    })
+    bio['sexo_masc'] = (bio['Gender'] == 'M').astype(int)
+    bio['grupo'] = pd.cut(bio['hba1c'], bins=[0, 5.7, 6.5, 100], right=False,
+                          labels=['saudável', 'pré-diabetes', 'DM2'])
+    return bio[['pid', 'idade', 'sexo_masc', 'imc', 'hba1c', 'glicemia_jejum', 'grupo']]
