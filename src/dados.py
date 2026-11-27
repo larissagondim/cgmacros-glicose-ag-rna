@@ -17,12 +17,17 @@ Funções:
 - tratar_estranhos(dias): limita os carboidratos a 500 g e preenche a atividade
   que falta com a média do próprio participante.
 - montar_dataset_rna(dias, n_anteriores): monta os exemplos de treino da rede.
+- montar_blocos(dias): os 9 dias seguidos (D1 a D9) de cada participante,
+  usados pelo AG e pela avaliação.
+- salvar_tabela(df, nome) / carregar_tabela(nome): grava e lê as tabelas
+  prontas em data/processed/.
 """
 
 from pathlib import Path
 import pandas as pd
 
 RAW = Path(__file__).resolve().parent.parent / 'data' / 'raw'
+PROCESSED = Path(__file__).resolve().parent.parent / 'data' / 'processed'
 
 
 def carregar(pid):
@@ -162,3 +167,41 @@ def montar_dataset_rna(dias, n_anteriores):
     entrada = colunas_ant + COMPORTAMENTO + BIO
     saida = d[['pid', 'data', 'grupo'] + entrada + ['glic_media']]
     return saida.rename(columns={'glic_media': 'alvo'}).reset_index(drop=True)
+
+
+def montar_blocos(dias, n_dias=9):
+    """Os primeiros `n_dias` dias bons seguidos de cada participante (D1 a D9).
+
+    D1 a D6 são os dias observados e D7 a D9 os dias em que o AG recomenda o
+    comportamento. A coluna 'dia' numera os dias do bloco de 1 a `n_dias`.
+    """
+    partes = []
+    for _, d in dias.sort_values(['pid', 'data']).groupby('pid'):
+        sequencia = (d['bom'] != d['bom'].shift()).cumsum()     # um número por bloco de dias iguais
+        bons = d[d['bom']]
+        for _, bloco in bons.groupby(sequencia[d['bom']]):
+            if len(bloco) >= n_dias:
+                b = bloco.head(n_dias).copy()
+                b['dia'] = range(1, n_dias + 1)
+                partes.append(b)
+                break                                            # só o primeiro bloco
+    blocos = pd.concat(partes, ignore_index=True)
+    primeiras = ['pid', 'dia', 'data']
+    return blocos[primeiras + [c for c in blocos.columns if c not in primeiras]]
+
+
+def salvar_tabela(df, nome):
+    """Grava uma tabela pronta em data/processed/<nome>.csv."""
+    PROCESSED.mkdir(parents=True, exist_ok=True)
+    caminho = PROCESSED / f'{nome}.csv'
+    df.to_csv(caminho, index=False)
+    return caminho
+
+
+def carregar_tabela(nome):
+    """Lê uma tabela de data/processed/, com a data e o grupo nos tipos certos."""
+    df = pd.read_csv(PROCESSED / f'{nome}.csv', parse_dates=['data'])
+    if 'grupo' in df.columns:
+        df['grupo'] = pd.Categorical(df['grupo'], categories=['saudável', 'pré-diabetes', 'DM2'],
+                                     ordered=True)
+    return df
