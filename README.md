@@ -19,10 +19,9 @@ A partir de 6 dias de dados de um participante (D1 a D6), o sistema recomenda um
 
 ## Progresso atual
 
-- [x] Dados baixados e organizados
-- [x] **Análise exploratória (EDA)** concluída: [notebooks/01_eda.ipynb](notebooks/01_eda.ipynb) e relatório em [docs/eda_relatorio.md](docs/eda_relatorio.md)
+### ✅ Análise exploratória (EDA)
 
-Principais decisões da EDA:
+Notebook em [notebooks/01_eda.ipynb](notebooks/01_eda.ipynb) e relatório em [docs/eda_relatorio.md](docs/eda_relatorio.md).
 
 | Decisão | Escolha |
 |---|---|
@@ -35,7 +34,9 @@ Principais decisões da EDA:
 
 Principais achados: cerca de 90% da variação da glicose diária vem de quem é a pessoa, e o efeito do carboidrato se inverte quando se compara cada pessoa com ela mesma (paradoxo de Simpson). Por isso a rede precisa receber o histórico de cada participante, e a validação precisa separar participantes.
 
-- [x] **Pré-processamento** concluído: [notebooks/02_preprocessamento.ipynb](notebooks/02_preprocessamento.ipynb), funções em [src/dados.py](src/dados.py) e relatório em [docs/preprocessamento_relatorio.md](docs/preprocessamento_relatorio.md)
+### ✅ Pré-processamento
+
+Notebook em [notebooks/02_preprocessamento.ipynb](notebooks/02_preprocessamento.ipynb), funções em [src/dados.py](src/dados.py) e relatório em [docs/preprocessamento_relatorio.md](docs/preprocessamento_relatorio.md).
 
 | Decisão | Escolha |
 |---|---|
@@ -78,7 +79,7 @@ docs/        relatórios
 
 ## Como rodar
 
-1. Baixe o CGMacros no PhysioNet e extraia as pastas `CGMacros-0XX` e os arquivos `bio.csv` e `DataDictionary_*.csv` em `data/raw/`.
+1. Baixe o CGMacros no PhysioNet e extraia as pastas `CGMacros-0XX` e os arquivos `bio.csv` e `DataDictionary_*.csv` em `data/raw/`. Integrantes do grupo podem, em vez disso, descompactar o `cgmacros_dados.zip` na pasta raiz do projeto: ele já traz `data/raw/` (sem as fotos) e as tabelas prontas em `data/processed/`.
 2. Crie o ambiente e instale as dependências:
 
    ```bash
@@ -88,3 +89,7 @@ docs/        relatórios
    ```
 
 3. Rode os notebooks em ordem: `01_eda.ipynb` e depois `02_preprocessamento.ipynb`, que gera as tabelas em `data/processed/`.
+
+## Dados e licença
+
+Os dados são do [CGMacros](https://physionet.org/content/cgmacros/1.0.0/) (PhysioNet, v1.0.0), distribuído sob a licença [Creative Commons Attribution-NonCommercial-ShareAlike 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). Eles não fazem parte deste repositório e são usados apenas para fins acadêmicos. Ao usar os dados, cite o dataset conforme indicado na página do PhysioNet.
