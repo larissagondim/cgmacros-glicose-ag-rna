@@ -14,6 +14,9 @@ Funções:
   com a glicose (Dexcom) e o comportamento do dia.
 - maior_sequencia(bom): tamanho do maior bloco de dias bons seguidos.
 - carregar_bio(): lê o bio.csv com as colunas usadas no modelo e o grupo clínico.
+- tratar_estranhos(dias): limita os carboidratos a 500 g e preenche a atividade
+  que falta com a média do próprio participante.
+- montar_dataset_rna(dias, n_anteriores): monta os exemplos de treino da rede.
 """
 
 from pathlib import Path
@@ -105,3 +108,57 @@ def carregar_bio():
     bio['grupo'] = pd.cut(bio['hba1c'], bins=[0, 5.7, 6.5, 100], right=False,
                           labels=['saudável', 'pré-diabetes', 'DM2'])
     return bio[['pid', 'idade', 'sexo_masc', 'imc', 'hba1c', 'glicemia_jejum', 'grupo']]
+
+
+# variáveis de comportamento do dia (são também os genes do AG)
+COMPORTAMENTO = ['carbs', 'proteina', 'gordura', 'fibra', 'atividade', 'hora_ultima_refeicao']
+
+# dados do participante que entram na rede (o grupo fica de fora, porque a HbA1c já entra)
+BIO = ['idade', 'sexo_masc', 'imc', 'hba1c', 'glicemia_jejum']
+
+# medidas de glicose dos dias anteriores que entram na rede
+GLICOSE = ['glic_media', 'glic_dp', 'glic_pico', 'pct_140']
+
+
+def tratar_estranhos(dias, teto_carbs=500):
+    """Trata os valores estranhos da tabela de dias (precisa da coluna 'bom').
+
+    - Carboidratos acima de `teto_carbs` gramas viram `teto_carbs`. Remover esses
+      dias quebraria a sequência de 9 dias de alguns participantes.
+    - Atividade vazia num dia bom (Fitbit não registrou) vira a média de atividade
+      dos dias bons do mesmo participante.
+    """
+    d = dias.copy()
+    d['carbs'] = d['carbs'].clip(upper=teto_carbs)
+
+    media_ativ = d['atividade'].where(d['bom']).groupby(d['pid']).transform('mean')
+    falta = d['bom'] & d['atividade'].isna()
+    d.loc[falta, 'atividade'] = media_ativ[falta]
+    return d
+
+
+def montar_dataset_rna(dias, n_anteriores):
+    """Monta os exemplos de treino da rede: uma linha por dia bom d.
+
+    Entrada: glicose dos `n_anteriores` dias antes de d + comportamento de d + bio.
+    Alvo: glicose média de d ('alvo').
+    Só entram dias em que d e todos os dias anteriores usados são bons. A glicose
+    do próprio dia d nunca entra na entrada, para não vazar o alvo.
+    """
+    d = dias.sort_values(['pid', 'data']).copy()
+    por_pid = d.groupby('pid')
+
+    todos_bons = d['bom'].copy()
+    colunas_ant = []
+    for j in range(1, n_anteriores + 1):
+        # o calendário está completo, então shift(j) é exatamente o dia d-j
+        todos_bons &= por_pid['bom'].shift(j, fill_value=False)
+        for col in GLICOSE:
+            nome = f'{col}_ant{j}'
+            d[nome] = por_pid[col].shift(j)
+            colunas_ant.append(nome)
+
+    d = d[todos_bons]
+    entrada = colunas_ant + COMPORTAMENTO + BIO
+    saida = d[['pid', 'data', 'grupo'] + entrada + ['glic_media']]
+    return saida.rename(columns={'glic_media': 'alvo'}).reset_index(drop=True)
