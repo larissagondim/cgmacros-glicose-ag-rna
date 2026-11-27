@@ -2,13 +2,11 @@
 
 ## 1. Objetivo
 
-O pré-processamento transforma os arquivos minuto a minuto do CGMacros nas tabelas que a rede neural (RNA) e o algoritmo genético (AG) vão usar. As regras vêm da EDA (`docs/eda_relatorio.md`): glicose do Dexcom, dia válido com cobertura de pelo menos 90% e participante válido com pelo menos 9 dias válidos seguidos.
-
-No fim, saem três tipos de tabela: uma com um dia por linha, outra com os exemplos de treino da rede e uma terceira com os 9 dias de cada participante que o AG vai usar.
+Esta etapa transforma os arquivos minuto a minuto do CGMacros nas tabelas que a rede neural (RNA) e o algoritmo genético (AG) vão usar. As regras são as da EDA (`docs/eda_relatorio.md`), ou seja, glicose do Dexcom, dia válido com cobertura de pelo menos 90% e participante válido com pelo menos 9 dias válidos seguidos. O resultado é uma tabela com um dia por linha, os exemplos de treino da rede e os 9 dias de cada participante que o AG vai usar.
 
 ## 2. Organização do código
 
-As funções ficam em `src/dados.py`, e o notebook `notebooks/02_preprocessamento.ipynb` só as chama, mostra os resultados e explica as decisões. Separamos assim porque os notebooks da RNA e do AG vão precisar das mesmas funções: com o código num lugar só, uma correção vale para todos. As listas de colunas que entram na rede (`GLICOSE`, `COMPORTAMENTO` e `BIO`) também estão no `dados.py`, e a lista `COMPORTAMENTO` é a mesma que o AG vai usar como genes.
+As funções ficam em `src/dados.py`, e o notebook `notebooks/02_preprocessamento.ipynb` só as chama, mostra os resultados e explica as decisões. Separamos assim porque os notebooks da RNA e do AG vão precisar das mesmas funções, e com o código num lugar só uma correção vale para todos. As listas de colunas que entram na rede (`GLICOSE`, `COMPORTAMENTO` e `BIO`) também estão no `dados.py`, e a lista `COMPORTAMENTO` é a mesma que o AG vai usar como genes.
 
 ## 3. Do minuto ao dia
 
@@ -18,13 +16,13 @@ A função `resumo_dia` transforma os minutos de um participante em uma linha po
 - **comportamento:** carboidratos, proteína, gordura e fibra somados nas refeições, atividade (soma de `Calories (Activity)`) e horário da última refeição em horas decimais (20,8 = 20h48);
 - **número de refeições registradas.**
 
-Três detalhes merecem nota. A função completa o calendário: uma data sem nenhuma linha no arquivo entra com cobertura 0, para que a contagem de dias seguidos não pule o buraco (foi esse o erro silencioso da primeira versão da análise na EDA). Na atividade, a soma usa `min_count=1`, porque por padrão o pandas transforma um dia sem nenhum registro do Fitbit em 0 caloria, quando o certo é dizer que o valor não existe. E o `Amount Consumed` foi ignorado, como decidido na EDA: os macronutrientes são usados como foram registrados.
+A função também completa o calendário. Uma data sem nenhuma linha no arquivo entra com cobertura 0, e assim a contagem de dias seguidos não pula o buraco, o erro silencioso que a primeira versão da análise cometeu na EDA. Na atividade, a soma usa `min_count=1`. Sem isso, o pandas transforma um dia em que o Fitbit não registrou nada em 0 caloria, quando o certo é dizer que o valor não existe. O `Amount Consumed` foi ignorado, como decidido na EDA, e os macronutrientes entram como foram registrados.
 
 No participante 001, os 14.730 minutos viram 11 linhas. Os dois dias da ponta têm cobertura de 0,51 e 0,40 e também somas menores (o último tem uma única refeição e 73 g de carboidrato), e ficam de fora pela regra dos 90%.
 
 ## 4. Participantes válidos
 
-Aplicando a `resumo_dia` aos 45 participantes, as regras da EDA dão o mesmo resultado: o 007, o 018 e o 026 não têm 9 dias bons seguidos e saem. Ficam 42 participantes, com 493 dias no calendário, dos quais 378 são bons. A conta fecha de um jeito curioso: cada participante válido tem exatamente 9 dias bons.
+Aplicando a `resumo_dia` aos 45 participantes, as regras da EDA dão o mesmo resultado: o 007, o 018 e o 026 não têm 9 dias bons seguidos e saem. Ficam 42 participantes, com 493 dias no calendário, dos quais 378 são bons. São exatamente 9 dias bons por participante, um detalhe que pesa nas decisões das seções 6 e 8.
 
 ## 5. Dados do participante
 
@@ -34,13 +32,13 @@ O grupo clínico também é criado aqui, pelos cortes de HbA1c da ADA, mas só p
 
 ## 6. Valores estranhos
 
-Como todo participante válido tem exatamente 9 dias bons, remover qualquer dia bom tiraria a pessoa do projeto. Isso orientou as duas decisões desta etapa.
+Com só 9 dias bons por pessoa, apagar qualquer um deles tira o participante do projeto. Por isso corrigimos os valores em vez de remover dias.
 
-Cinco dias têm mais de 500 g de carboidrato (a mediana é 188 g), nos participantes 004, 021 e 036, provavelmente por erro de registro ou refeição duplicada. Em vez de remover esses dias, limitamos o valor a 500 g.
+Cinco dias têm mais de 500 g de carboidrato (a mediana é 188 g), nos participantes 004, 021 e 036, provavelmente por erro de registro ou refeição duplicada. Nesses dias, o carboidrato foi limitado a 500 g.
 
-O participante 033 tem um dia bom sem atividade: em 25/04, o Fitbit parou de registrar. É justamente o 9º dos 9 dias bons dele. A atividade desse dia foi preenchida com a média dos outros dias bons do próprio participante (2585 kcal), um valor dentro da faixa normal dele, entre cerca de 2000 e 3000 kcal.
+No participante 033, o Fitbit parou de registrar em 25/04, o último dos 9 dias bons dele. A atividade desse dia foi preenchida com a média dos outros dias bons do próprio 033 (2585 kcal), que fica dentro da faixa normal dele, de cerca de 2000 a 3000 kcal.
 
-Os 9 dias com pico de 400 mg/dL ficaram como estão. Esse é o limite do sensor, então registramos apenas que o pico real pode ter sido maior. Depois desses tratamentos, nenhum dia bom tem valor vazio.
+Os 9 dias com pico de 400 mg/dL ficaram como estão, porque esse é o limite do sensor e não há como saber o valor real. Depois desses ajustes, nenhum dia bom tem valor vazio.
 
 ## 7. Tabela da rede
 
@@ -54,11 +52,11 @@ Não sabíamos se a rede precisaria de 2 ou 3 dias de histórico, então montamo
 | variáveis de entrada | 19 | 23 |
 | exemplos por grupo | 98 | 84 |
 
-Com 3 dias, a rede tem mais histórico, mas cada participante perde um exemplo a mais no começo. A escolha vai ser feita no treino da rede. Como as duas versões não têm os mesmos dias, a comparação precisa ser feita nos dias que existem nas duas.
+Com 3 dias a rede tem mais histórico, mas cada participante perde um exemplo a mais no começo. A escolha fica para o treino da rede, comparando o erro só nos dias que existem nas duas versões.
 
 ## 8. Bloco D1 a D9
 
-O AG e a avaliação final trabalham com 9 dias seguidos de cada participante: D1 a D6 são observados e, de D7 a D9, o AG propõe o comportamento. A função `montar_blocos` pega os primeiros 9 dias bons seguidos de cada participante e os numera de 1 a 9. São 42 blocos, todos com dias bons, em datas seguidas e sem valores vazios. Como cada participante tem exatamente 9 dias bons, o bloco são os próprios dias bons dele.
+O AG e a avaliação final trabalham com 9 dias seguidos de cada participante. De D1 a D6 o comportamento é observado, e de D7 a D9 é o AG que o propõe. A função `montar_blocos` pega os primeiros 9 dias bons seguidos de cada pessoa e os numera de 1 a 9. Aqui ela acaba pegando todos os dias bons, mas foi escrita para o caso geral, caso a regra de dia bom mude. São 42 blocos em datas seguidas e sem valores vazios.
 
 ## 9. Tabelas geradas
 
@@ -75,11 +73,9 @@ Testamos a gravação e a leitura das quatro tabelas, e todas voltam idênticas.
 
 ## 10. Limites e cuidados para as próximas etapas
 
-Alguns limites vêm desta etapa:
+- Um lanche depois da meia-noite conta para o dia seguinte, então o horário da última refeição pode subestimar o quanto a pessoa comeu tarde. Aceitamos isso para que o dia da refeição seja o mesmo dia da glicose.
+- O teto de 500 g e a atividade preenchida do 033 são estimativas, e não valores medidos.
+- Como o `Amount Consumed` foi ignorado, uma refeição comida pela metade conta como inteira.
+- Os dados do participante vêm de um único exame, feito no início do estudo.
 
-- um lanche depois da meia-noite conta para o dia seguinte, então o horário da última refeição pode subestimar o quanto a pessoa comeu tarde. Aceitamos isso para que o dia da refeição seja o mesmo dia da glicose;
-- o teto de 500 g e o preenchimento da atividade do 033 são estimativas, e não valores medidos;
-- o `Amount Consumed` foi ignorado, então uma refeição comida pela metade conta como inteira;
-- os dados do participante vêm de um único exame, feito no início do estudo.
-
-Um cuidado para a etapa da rede: os dias D7 a D9 de cada participante também aparecem como exemplos de treino. Na avaliação da recomendação, a rede consultada para um participante precisa ter sido treinada sem os dados dele. Caso contrário, ela já "conhece" a glicose real do D9, e o resultado fica otimista. A validação por participante (GroupKFold) resolve isso, desde que seja usada também nessa etapa.
+Os dias D7 a D9 de cada participante também aparecem como exemplos de treino da rede. Quando o AG for recomendar algo para uma pessoa, a rede que ele consulta tem que ter sido treinada sem os dados dela, senão já "conhece" a glicose real do D9 e o resultado sai otimista. A validação por participante (GroupKFold) resolve isso, desde que seja usada também nessa hora.
