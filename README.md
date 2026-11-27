@@ -35,9 +35,21 @@ Principais decisões da EDA:
 
 Principais achados: cerca de 90% da variação da glicose diária vem de quem é a pessoa, e o efeito do carboidrato se inverte quando se compara cada pessoa com ela mesma (paradoxo de Simpson). Por isso a rede precisa receber o histórico de cada participante, e a validação precisa separar participantes.
 
+- [x] **Pré-processamento** concluído: [notebooks/02_preprocessamento.ipynb](notebooks/02_preprocessamento.ipynb), funções em [src/dados.py](src/dados.py) e relatório em [docs/preprocessamento_relatorio.md](docs/preprocessamento_relatorio.md)
+
+| Decisão | Escolha |
+|---|---|
+| Entrada da rede | glicose dos dias anteriores (média, desvio, pico, % > 140) + comportamento do dia + dados do participante |
+| Comportamento (genes do AG) | carboidratos, proteína, gordura, fibra, atividade e horário da última refeição |
+| Dados do participante | idade, sexo, IMC, HbA1c e glicemia de jejum |
+| Carboidrato acima de 500 g | limitado a 500 g (5 dias) |
+| Dia sem Fitbit (participante 033) | média de atividade do próprio participante |
+| Dias anteriores | duas versões, com 2 e 3 dias; a escolha fica para o treino da RNA |
+
+Tabelas geradas em `data/processed/`: `dias.csv` (493 dias), `blocos_d1_d9.csv` (os 9 dias de cada participante), `dataset_rna_2.csv` (294 exemplos) e `dataset_rna_3.csv` (252 exemplos).
+
 ## O que falta
 
-- [ ] **Pré-processamento:** tabela final com uma linha por pessoa-dia (glicose, macronutrientes, horário da última refeição, atividade e dados do `bio.csv`)
 - [ ] **RNA:** treinar a MLP, validar por participante (GroupKFold) e comparar com os baselines (persistência e regressão linear), usando MAE em mg/dL
 - [ ] **AG:** cromossomo de 18 genes (6 variáveis × 3 dias), limites em torno dos hábitos de cada participante e fitness com a glicose prevista no D9 mais penalidades
 - [ ] **Avaliação:** comparar a glicose prevista no D9 nos cenários real × habitual × recomendado, por grupo clínico
@@ -46,20 +58,20 @@ Principais achados: cerca de 90% da variação da glicose diária vem de quem é
 
 ## Próximos passos
 
-Pendências que a EDA deixou para o pré-processamento:
+Para a RNA (`notebooks/03_rna.ipynb`):
 
-1. Padronizar os tipos de refeição (`dinner`/`Dinner`, `snack`/`Snacks`/`snack 1`).
-2. Decidir o que fazer com `Amount Consumed`, que tem valores acima de 100% e falta nos participantes 028 e 029.
-3. Tratar valores estranhos: 5 dias com mais de 500 g de carboidrato, 1 dia sem dados do Fitbit e picos de glicose cortados em 400 mg/dL (limite do sensor).
-4. Escolher quais 9 dias seguidos de cada participante usar como D1 a D9.
-5. Mover as funções de carga e agregação do notebook para `src/`, para reaproveitar nas próximas etapas.
+1. Carregar as tabelas com `carregar_tabela('dataset_rna_2')` e `carregar_tabela('dataset_rna_3')`.
+2. Calcular os baselines por participante (GroupKFold): persistência ("hoje = ontem", MAE de ~8 mg/dL) e regressão linear.
+3. Treinar a MLP com ReLU, normalizando as entradas só com os dados de treino de cada fold.
+4. Comparar as versões com 2 e 3 dias anteriores nos mesmos dias de teste.
+5. Guardar, para cada participante, uma rede treinada sem os dados dele. É essa que o AG vai consultar.
 
 ## Estrutura
 
 ```
-data/        dados do CGMacros (fora do git; os CSVs ficam em data/raw/)
-notebooks/   análises (01_eda.ipynb)
-src/         código reaproveitável
+data/        dados do CGMacros (fora do git); brutos em data/raw/, tabelas prontas em data/processed/
+notebooks/   01_eda.ipynb, 02_preprocessamento.ipynb
+src/         código reaproveitável (dados.py)
 results/     figuras e resultados
 docs/        relatórios
 ```
@@ -75,4 +87,4 @@ docs/        relatórios
    pip install pandas numpy matplotlib seaborn scikit-learn jupyter
    ```
 
-3. Abra `notebooks/01_eda.ipynb` e rode todas as células.
+3. Rode os notebooks em ordem: `01_eda.ipynb` e depois `02_preprocessamento.ipynb`, que gera as tabelas em `data/processed/`.
