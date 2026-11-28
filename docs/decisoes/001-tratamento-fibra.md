@@ -139,7 +139,7 @@ A fibra de `snack` e `dinner` desses dois participantes tem valores impossíveis
 2. Conferir outros campos fora das faixas do dicionário
    (ex.: refeição de 472 g de carboidrato no participante 21).
 3. Alinhar com a equipe.
-4. Atualizar `README.md` e o relatório de pré-processamento (citam 42 participantes).
+4. Atualizar `README.md` (raiz do projeto) e o relatório de pré-processamento (citam 42 participantes).
 
 ---
 

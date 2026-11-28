@@ -79,7 +79,7 @@ Cada participante tem assim um conjunto de redes treinado sem os dados dele.
 
 - Se os hiperparâmetros forem ajustados nas mesmas rodadas usadas para
   reportar o erro, o resultado fica otimista.
-- Cada participante de teste tem poucas linhas (6 ou 7), então o erro
+- Cada participante de teste tem poucas linhas (6 a 8), então o erro
   de um só participante é ruidoso. O resumo confiável é o do conjunto.
 
 ---
