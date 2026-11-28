@@ -14,7 +14,7 @@ Cada decisão tem um arquivo próprio, com alternativas, prós e contras.
 |--------------------------------------|-----------------------------------------|----------|
 | [001](001-tratamento-fibra.md)       | Fibra dos participantes 16 e 19         | proposta |
 | [002](002-modelo-rna.md)             | Modelo da RNA: MLPRegressor em conjunto | decidida |
-| [003](003-alvo-d9.md)                | Alvo do D9: glicose média               | decidida |
+| [003](003-alvo-D9.md)                | Alvo do D9: glicose média               | decidida |
 | [004](004-validacao-normalizacao.md) | Validação e normalização                | decidida |
 | [005](005-baselines-metricas.md)     | Baselines e métricas                    | decidida |
 | [006](006-avaliacao-final.md)        | Avaliação final: efeito previsto        | decidida |
